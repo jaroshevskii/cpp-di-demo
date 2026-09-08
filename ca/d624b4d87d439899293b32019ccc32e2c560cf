@@ -1,0 +1,19 @@
+examples/DiceApp.h
+  s_974d6062f4cd11::t_ad668a947f337f 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cad624b4d87d439899293b32019ccc32e2c560cf",
+  "prompts": {},
+  "sessions": {
+    "s_974d6062f4cd11": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7d8fa4c2ffePwkxNqjnhfIR4j",
+        "model": "big-pickle"
+      },
+      "human_author": "Sasha Jaroshevskii 🦄 <72662383+jaroshevskii@users.noreply.github.com>"
+    }
+  }
+}
