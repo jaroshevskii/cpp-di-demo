@@ -1,0 +1,39 @@
+.clang-format
+  s_c7dca759818766::t_74677e5f0024b6 1-12
+CMakeLists.txt
+  s_c7dca759818766::t_8c47e24224b41f 1-84
+examples/DiceApp.h
+  s_c7dca759818766::t_9d6577eef4c016 1-125
+examples/DiceCli.cpp
+  s_c7dca759818766::t_7db2e703d55672 1-99
+include/cppdi/Dependencies.h
+  s_c7dca759818766::t_cdf2e9c8933177 1-195
+include/cppdi/Logger.h
+  s_c7dca759818766::t_66dca79a304e2d 1-101
+include/cppdi/Random.h
+  s_c7dca759818766::t_1f3a0f889db27c 1-97
+tests/AppTests.cpp
+  s_c7dca759818766::t_ea8e6cd4b4c0ab 1-141
+tests/DependenciesTests.cpp
+  s_c7dca759818766::t_f7292ec0300531 1-109
+tests/LoggerTests.cpp
+  s_c7dca759818766::t_e866cafc2b83a1 1-61
+tests/RandomTests.cpp
+  s_c7dca759818766::t_0424f63f591d0b 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b7ede4a01572b58bb896f929a1ce35458afb1890",
+  "prompts": {},
+  "sessions": {
+    "s_c7dca759818766": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1932a2a0-f6ab-4357-aa13-1c5a502c1300",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sasha Jaroshevskii 🦄 <72662383+jaroshevskii@users.noreply.github.com>"
+    }
+  }
+}
