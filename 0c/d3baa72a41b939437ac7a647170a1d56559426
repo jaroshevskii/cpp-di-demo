@@ -1,0 +1,70 @@
+include/cppdi/DependencyTraits.h
+  s_974d6062f4cd11::t_cec3504f72b7f8 15-17
+  s_974d6062f4cd11::t_8b0ea2d69982a2 1-14,18-69
+CMakeLists.txt
+  s_974d6062f4cd11::t_499c196e840982 63
+include/cppdi/Random.h
+  s_974d6062f4cd11::t_cec3504f72b7f8 114-115
+  s_974d6062f4cd11::t_f5523cc0a46ca8 3-4,6
+  s_974d6062f4cd11::t_966870df5ec283 100-113,116-118
+include/cppdi/Dependency.h
+  s_974d6062f4cd11::t_cec3504f72b7f8 119-121
+  s_974d6062f4cd11::t_be35a3da1d5581 1-118,122-196
+include/cppdi/Logger.h
+  s_974d6062f4cd11::t_4d257eca9fe8b1 104-114
+  s_974d6062f4cd11::t_27da6425398d52 3-4,7
+examples/DiceCli.cpp
+  s_974d6062f4cd11::t_da9491cdba052c 79-84,90
+README.md
+  s_974d6062f4cd11::t_490e142266adc0 12-21
+  s_974d6062f4cd11::t_bdaff0a80c168d 151-183
+  s_974d6062f4cd11::t_30c49c86c9ecd9 212,218
+  s_974d6062f4cd11::t_6c9b809725ea4b 222,224
+  s_974d6062f4cd11::t_63c72658cdc927 189-202
+  s_974d6062f4cd11::t_737e86cb4e98cc 223
+  s_974d6062f4cd11::t_52f605994d3b3d 63-68,70
+include/cppdi/Dependencies.h
+  s_974d6062f4cd11::t_5a0a819b91ec35 3,20-21,27-33,43-44,46-47,72-74,76-77,79-80,82,87-89,100,105-129,135-136,139-140,145-146,151-169,172-173,175-176,179,187-189
+docs/testing.md
+  s_974d6062f4cd11::t_86bed5820fb298 11,34-57
+  s_974d6062f4cd11::t_037138e705e9be 198-201
+  s_974d6062f4cd11::t_16e04a99ab530c 157-162
+  s_974d6062f4cd11::t_61de2a6ac62bd5 58
+tests/AppTests.cpp
+  s_974d6062f4cd11::t_e1d41382844b20 138-139,147,150,152
+  s_974d6062f4cd11::t_bbf21e26d4072a 140-146,148-149,151
+  s_974d6062f4cd11::t_9c62c5a9358471 3
+tests/DependenciesTests.cpp
+  s_974d6062f4cd11::t_69b296d74c46e5 12-20,31,33
+tests/DependencyTests.cpp
+  s_974d6062f4cd11::t_cec3504f72b7f8 148-150,176-181,184,211-213,245-246
+  s_974d6062f4cd11::t_73ddb32522c9fe 205
+  s_974d6062f4cd11::t_f07b845714a2a0 1-147,151-175,182-183,185-204,206-210,214-244,247-249
+docs/dependency-key.md
+  s_974d6062f4cd11::t_9c7b7f80f9c692 1-131
+examples/DiceApp.h
+  s_974d6062f4cd11::t_ff7a430788b129 115,119-120
+  s_974d6062f4cd11::t_418ee3176c6cbd 3,22-25,30,35-37
+  s_974d6062f4cd11::t_ccf58c41289d2d 38
+  s_974d6062f4cd11::t_4aac6db88f9cb8 121
+docs/architecture.md
+  s_974d6062f4cd11::t_5100e010289629 231-312
+  s_974d6062f4cd11::t_0f3d4d7e995c60 207-212
+  s_974d6062f4cd11::t_086c232a86ba89 316-317,321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0cd3baa72a41b939437ac7a647170a1d56559426",
+  "prompts": {},
+  "sessions": {
+    "s_974d6062f4cd11": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7d8fa4c2ffePwkxNqjnhfIR4j",
+        "model": "big-pickle"
+      },
+      "human_author": "Sasha Jaroshevskii 🦄 <72662383+jaroshevskii@users.noreply.github.com>"
+    }
+  }
+}
