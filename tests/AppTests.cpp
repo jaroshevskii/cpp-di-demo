@@ -1,5 +1,6 @@
 #include "DiceApp.h"
 #include "cppdi/Dependencies.h"
+#include "cppdi/Dependency.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
@@ -134,4 +135,19 @@ TEST_CASE("RandomStringGenerator is deterministic for the same seed") {
   auto b = makeGenerator(42u);
 
   REQUIRE(a.generate(50u) == b.generate(50u));
+}
+
+TEST_CASE("app components implicitly resolve the exact same graph as an explicit context") {
+  // Two identical seed-1 contexts: one drives a DiceRoller the explicit way,
+  // the other is installed as the current values and drives a
+  // default-constructed DiceRoller the ergonomic way. Both must produce the
+  // same deterministic sequence.
+  auto explicitCtx = AppContext::test(1u);
+  const auto expected = app::DiceRoller{explicitCtx}.rollMany(128u);
+
+  auto implicitCtx = AppContext::test(1u);
+  auto scope = bindDependencies(implicitCtx.dependencies);
+
+  const auto actual = app::DiceRoller{}.rollMany(128u);
+  REQUIRE(actual == expected);
 }

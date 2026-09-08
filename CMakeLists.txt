@@ -60,6 +60,7 @@ if(CPPDI_BUILD_TESTS AND BUILD_TESTING)
         tests/LoggerTests.cpp
         tests/RandomTests.cpp
         tests/AppTests.cpp
+        tests/DependencyTests.cpp
     )
     target_link_libraries(tests PRIVATE dice_app Catch2::Catch2WithMain)
     cppdi_setup_compile_settings(tests)

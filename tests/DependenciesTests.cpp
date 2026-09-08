@@ -9,6 +9,15 @@
 
 using namespace cppdi;
 
+namespace {
+/// An interface with *no* `DependencyTraits` specialization, so accessing it
+/// without a provider genuinely has no default to fall back to.
+struct INoDefault {
+  virtual ~INoDefault() = default;
+  virtual void run() = 0;
+};
+} // namespace
+
 TEST_CASE("provide() registers and get() retrieves an implementation") {
   Dependencies deps;
   deps.provide<IRandomGenerator, DeterministicGenerator>(42u);
@@ -19,9 +28,9 @@ TEST_CASE("provide() registers and get() retrieves an implementation") {
   REQUIRE(rng->nextInt(1, 6) <= 6);
 }
 
-TEST_CASE("get() throws DependencyNotFoundError when unregistered") {
+TEST_CASE("get() throws DependencyNotFoundError when unregistered and defaultless") {
   Dependencies deps;
-  REQUIRE_THROWS_AS(deps.get<IRandomGenerator>(), DependencyNotFoundError);
+  REQUIRE_THROWS_AS(deps.get<INoDefault>(), DependencyNotFoundError);
 }
 
 TEST_CASE("contains() and tryGet() report registration status without throwing") {

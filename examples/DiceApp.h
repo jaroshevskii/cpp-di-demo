@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cppdi/Dependencies.h"
+#include "cppdi/Dependency.h"
 
 #include <atomic>
 #include <cstddef>
@@ -19,13 +19,22 @@ namespace cppdi::app {
 /// dependencies it needs out of it. It never constructs its own generators
 /// or loggers, which is what makes the whole stack trivially replaceable in
 /// tests (see `AppContext::test`).
+///
+/// Most classes also offer a *default* constructor that resolves its
+/// dependencies implicitly through the current values (`Dependency<T>`), the
+/// ergonomic style modeled on Swift's `@Dependency`.
 
 /// Rolls a fair d6 and logs the outcome.
 class DiceRoller {
 public:
+  /// Explicit style: resolve from a concrete context.
   explicit DiceRoller(AppContext context)
       : rng{context.dependencies.get<IRandomGenerator>()},
         logger{context.dependencies.get<ILogger>()} {}
+
+  /// Implicit style: resolve through the current dependency values
+  /// (see `withDependencies` / `bindDependencies`).
+  DiceRoller() : rng{Dependency<IRandomGenerator>{}.get()}, logger{Dependency<ILogger>{}.get()} {}
 
   int roll() {
     const int value = rng->nextInt(1, 6);
@@ -103,8 +112,12 @@ private:
 /// Generates a random lowercase string of the requested length.
 class RandomStringGenerator {
 public:
+  /// Explicit style: resolve from a concrete context.
   explicit RandomStringGenerator(AppContext context)
       : rng{context.dependencies.get<IRandomGenerator>()} {}
+
+  /// Implicit style: resolve through the current dependency values.
+  RandomStringGenerator() : rng{Dependency<IRandomGenerator>{}.get()} {}
 
   std::string generate(std::size_t length) {
     constexpr std::string_view kAlphabet = "abcdefghijklmnopqrstuvwxyz";

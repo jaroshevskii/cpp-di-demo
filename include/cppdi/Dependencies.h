@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cppdi/DependencyTraits.h"
 #include "cppdi/Logger.h"
 #include "cppdi/Random.h"
 
@@ -8,7 +9,6 @@
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <stdexcept>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
@@ -17,28 +17,19 @@
 
 namespace cppdi {
 
-namespace detail {
-/// Best-effort readable type name. `typeid(...).name()` is implementation
-/// defined, but good enough for diagnostics.
-inline std::string typeName(const std::type_info &info) {
-  return info.name();
-}
-} // namespace detail
-
-/// Thrown by `Dependencies::get<T>()` when no implementation was registered
-/// for the requested interface.
-class DependencyNotFoundError : public std::out_of_range {
-public:
-  explicit DependencyNotFoundError(const std::string &typeName)
-      : std::out_of_range("No implementation registered for: " + typeName) {}
-};
-
-/// A tiny, type-erased dependency container inspired by the Composable
-/// Architecture's `DependencyValues`.
+/// A tiny, type-erased dependency container inspired by Swift's
+/// `DependencyValues`.
 ///
 /// Registrations are keyed by the *interface* type and stored as erased
 /// `shared_ptr`s. Lookups are O(1) and protected by a mutex, so the same
 /// container can be shared across threads.
+///
+/// Values are resolved in this order:
+///   1. an implementation registered with `provide<T>(...)`;
+///   2. a lazy default from `DependencyTraits<T>` — `live()` or `test()`
+///      depending on this container's `DependencyContext` — created once on
+///      first access and cached (mirrors `DependencyValues` caching);
+///   3. otherwise `get<T>()` throws `DependencyNotFoundError`.
 ///
 /// ## Thread-safety model
 ///
@@ -49,10 +40,11 @@ public:
 ///     while `ThreadLocalRandomGenerator` uses a per-thread engine).
 class Dependencies {
 public:
-  Dependencies() = default;
+  explicit Dependencies(DependencyContext context = DependencyContext::Live)
+      : registry{std::make_shared<Registry>(context)} {}
 
-  // Copying the container is cheap and *shares* the underlying services:
-  // a copy behaves like a "clone" for this pattern.
+  // Copying the container is cheap and *shares* the underlying services and
+  // memoized defaults: a copy behaves like a "clone" for this pattern.
   Dependencies(const Dependencies &) = default;
   Dependencies &operator=(const Dependencies &) = default;
   Dependencies(Dependencies &&) = default;
@@ -77,20 +69,24 @@ public:
     registry->services[key] = std::move(impl);
   }
 
-  /// Return the implementation registered for `Interface`.
+  /// Return the value for `Interface`: a provided implementation if one
+  /// exists, otherwise a lazily-created, cached `DependencyTraits<Interface>`
+  /// default.
   ///
-  /// @throws DependencyNotFoundError if no implementation is registered
+  /// @throws DependencyNotFoundError if neither a provider nor a trait
+  ///         default exists.
   template <typename Interface> std::shared_ptr<Interface> get() const {
-    auto impl = tryGet<Interface>();
-    if (!impl) {
-      throw DependencyNotFoundError{detail::typeName(typeid(Interface))};
+    if (auto impl = tryGet<Interface>()) {
+      return impl;
     }
-    return impl;
+    return resolveDefault<Interface>();
   }
 
   /// Non-throwing variant of `get()`.
   ///
-  /// @return a valid `shared_ptr`, or a null `shared_ptr` if unregistered.
+  /// @return a valid `shared_ptr`, or a null `shared_ptr` if no *explicit*
+  ///         implementation is registered. Trait defaults are deliberately
+  ///         ignored, so `contains()` keeps meaning "was this provided?".
   template <typename Interface> std::shared_ptr<Interface> tryGet() const {
     const std::type_index key{typeid(Interface)};
     std::lock_guard<std::mutex> lock(registry->mutex);
@@ -101,37 +97,86 @@ public:
     return std::static_pointer_cast<Interface>(it->second);
   }
 
-  /// Whether an implementation is registered for `Interface`.
+  /// Whether an implementation was explicitly registered for `Interface`.
   template <typename Interface> bool contains() const {
     return static_cast<bool>(tryGet<Interface>());
   }
 
-  /// Create a copy sharing the same services.
+  /// Forget an explicitly provided value so later `get<T>()` falls back to
+  /// the `DependencyTraits<T>` default again.
+  template <typename Interface> void remove() {
+    const std::type_index key{typeid(Interface)};
+    std::lock_guard<std::mutex> lock(registry->mutex);
+    registry->services.erase(key);
+  }
+
+  /// Which `DependencyContext` decides which trait default (`live()` vs
+  /// `test()`) is used for values that are not explicitly provided.
+  DependencyContext context() const {
+    std::lock_guard<std::mutex> lock(registry->mutex);
+    return registry->context;
+  }
+
+  /// Switch the default-value flavor (`DependencyContext::Live` / `Test`).
+  ///
+  /// Only affects defaults that have not been created *and cached* yet; an
+  /// already-resolved value keeps its instance.
+  void setContext(DependencyContext value) {
+    std::lock_guard<std::mutex> lock(registry->mutex);
+    registry->context = value;
+  }
+
+  /// Create a copy sharing the same services and cached defaults.
   ///
   /// Equivalent to copy construction; provided as an explicit
   /// intention-revealing alias for use in async code.
   Dependencies clone() const { return *this; }
 
-  /// Create a copy with a *fresh* registry that still shares the same
-  /// service instances.
+  /// Create a copy with a *fresh* registry that shares the same service
+  /// instances and previously-resolved defaults.
   ///
   /// Services registered afterwards on the copy do not affect the original
-  /// — used by `AppContext::forkForAsync` so parallel tasks can install
-  /// per-task engines without mutating a shared graph.
+  /// — the scoping primitive behind `AppContext::forkForAsync`,
+  /// `withDependencies`, and `prepareDependencies`.
   Dependencies detach() const {
     Dependencies copy;
     std::lock_guard<std::mutex> lock(registry->mutex);
     copy.registry->services = registry->services;
+    copy.registry->defaults = registry->defaults;
+    copy.registry->context = registry->context;
     return copy;
   }
 
 private:
+  template <typename Interface> std::shared_ptr<Interface> resolveDefault() const {
+    const std::type_index key{typeid(Interface)};
+    std::lock_guard<std::mutex> lock(registry->mutex);
+    auto it = registry->defaults.find(key);
+    if (it != registry->defaults.end()) {
+      return std::static_pointer_cast<Interface>(it->second);
+    }
+    auto value = buildTraitDefault<Interface>();
+    registry->defaults.emplace(key, std::static_pointer_cast<void>(value));
+    return value;
+  }
+
+  template <typename Interface> std::shared_ptr<Interface> buildTraitDefault() const {
+    if (registry->context == DependencyContext::Test) {
+      return DependencyTraits<Interface>::test();
+    }
+    return DependencyTraits<Interface>::live();
+  }
+
   struct Registry {
     std::unordered_map<std::type_index, std::shared_ptr<void>> services;
+    std::unordered_map<std::type_index, std::shared_ptr<void>> defaults;
+    DependencyContext context;
     mutable std::mutex mutex;
+
+    explicit Registry(DependencyContext value) : context{value} {}
   };
 
-  std::shared_ptr<Registry> registry{std::make_shared<Registry>()};
+  std::shared_ptr<Registry> registry{std::make_shared<Registry>(DependencyContext::Live)};
 };
 
 /// A ready-to-use application context, the C++ counterpart of
@@ -139,7 +184,9 @@ private:
 ///
 /// It bundles every dependency the application cares about and lets you build
 /// either a production graph or a fully deterministic test graph with one
-/// line.
+/// line. For the ergonomic ("read dependencies anywhere") style, install one
+/// on the current thread with `bindDependencies` and construct components with
+/// their default constructor.
 ///
 /// @code
 /// auto liveContext = cppdi::AppContext::live();    // real randomness

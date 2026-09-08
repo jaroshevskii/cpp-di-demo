@@ -8,7 +8,7 @@ Run everything:
 
 ```bash
 cmake -B build && cmake --build build --parallel
-ctest --test-dir build --output-on-failure     # 31 cases
+ctest --test-dir build --output-on-failure     # 48 cases
 ./build/tests                                  # same suite, richer output
 ```
 
@@ -30,6 +30,31 @@ auto ctx = cppdi::AppContext::test(42u);       // DeterministicGenerator(42), Te
 Your code (`DiceRoller`, ...) does not branch on this. It just calls
 `get<IRandomGenerator>()` and `get<ILogger>()`. That single fact is why
 everything below is possible.
+
+## 1a. Two styles — one graph
+
+Everything on this page can be written two ways, and they resolve to the same
+instances:
+
+| Style     | Wiring                                | Components               |
+| --------- | ------------------------------------- | ------------------------ |
+| Explicit  | pass `AppContext` into constructors   | `DiceRoller{ctx}`        |
+| Ergonomic | install values for a scope, construct components by default | `bindDependencies(ctx.dependencies)` + `DiceRoller{}` |
+
+The shortcut for tests: trait defaults declare `live()`/`test()` per
+dependency (the `DependencyKey` pattern), then
+
+```cpp
+cppdi::withDependencies([](cppdi::Dependencies &deps) {   // the .dependencies trait
+  deps.provide<ILogger, TestLogger>();
+}, [&] {
+  // components built here (implicitly or explicitly) see the override
+});
+```
+
+Because `withDependencies` restores on exit even when the body throws, scoped
+overrides cannot leak into later tests. Overlays are thread-local: see
+[`docs/architecture.md` §7](architecture.md) for the value-stack rules.
 
 ## 2. Determinism: same seed, same output
 
@@ -129,6 +154,12 @@ interleaving ⇒ different result vectors run-to-run. The test would flake.
 its first value from a fixed seed, so the vector `[task0, task1, …]` is a
 pure function of `baseSeed`. Scheduling order is irrelevant.
 
+**Why not just reuse `withDependencies` for the tasks?** Overlays are
+thread-local: a `std::async` worker starts with the *process* defaults and
+never sees the spawning thread's overlay. Determinism across threads is
+`forkForAsync`'s job, so it is used for parallel work; `withDependencies` is
+for the current thread's scope.
+
 ## 7. Property-ish tests with tiny seeds
 
 Change the seed in one line to shake out corner cases:
@@ -164,5 +195,9 @@ ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build-asan --output-on-failure
 - [ ] Pass a seed explicitly; the default `42u` is a fallback, not an excuse.
 - [ ] Assertions from the main thread only.
 - [ ] Prefer `forkForAsync(slot)` over a shared generator for parallel work.
+- [ ] Scope short overrides with `withDependencies` (restored even on throw);
+      hold `bindDependencies` guards for the component's whole lifetime.
+- [ ] Remember worker threads don't inherit `withDependencies`/`bindDependencies`
+      overlays — pass a context or fork per task.
 - [ ] After any RNG API change, re-run `ctest` a few times:
       `for i in $(seq 1 10); do ./build/tests; done`

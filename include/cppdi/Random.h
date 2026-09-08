@@ -1,6 +1,9 @@
 #pragma once
 
+#include "cppdi/DependencyTraits.h"
+
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <random>
 #include <stdexcept>
@@ -92,6 +95,25 @@ public:
 private:
   std::mt19937 engine;
   mutable std::mutex mutex;
+};
+
+/// Default values for `IRandomGenerator` — the C++ counterpart of a built-in
+/// `DependencyKey`.
+///
+/// - `live()`: real entropy (`ThreadLocalRandomGenerator`).
+/// - `test()`: **no default** — like Swift's `.unimplemented`, using a live
+///   generator in a deterministic test silently would be a bug, so accessing
+///   it throws until you provide a seeded generator (see
+///   `AppContext::test(seed)`).
+template <> struct DependencyTraits<IRandomGenerator> {
+  static std::shared_ptr<IRandomGenerator> live() {
+    return std::make_shared<ThreadLocalRandomGenerator>();
+  }
+
+  static std::shared_ptr<IRandomGenerator> test() {
+    throw DependencyNotFoundError{"IRandomGenerator has no default test() value — provide a seeded "
+                                  "generator explicitly (e.g. via AppContext::test(seed))"};
+  }
 };
 
 } // namespace cppdi

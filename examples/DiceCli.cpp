@@ -76,13 +76,18 @@ int main(int argc, char **argv) {
   const cppdi::AppContext context =
       opts.seed == 0 ? cppdi::AppContext::live() : cppdi::AppContext::test(opts.seed);
 
-  cppdi::app::DiceRoller roller{context};
+  // Install the context as the "current values" for this thread, and build
+  // the app components *implicitly* through `Dependency<T>` — the same values
+  // the explicit style would have handed them.
+  const auto scope = cppdi::bindDependencies(context.dependencies);
+
+  cppdi::app::DiceRoller roller;
   std::cout << "Rolling a d6 " << opts.rolls << " time(s)...\n";
   for (int i = 0; i < opts.rolls; ++i) {
     std::cout << "  " << i + 1 << ". " << roller.roll() << '\n';
   }
 
-  cppdi::app::RandomStringGenerator strings{context};
+  cppdi::app::RandomStringGenerator strings;
   std::cout << "Random string: " << strings.generate(12) << '\n';
 
   if (opts.parallel) {

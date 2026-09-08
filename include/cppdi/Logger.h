@@ -1,7 +1,10 @@
 #pragma once
 
+#include "cppdi/DependencyTraits.h"
+
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -96,6 +99,17 @@ private:
 class NullLogger final : public ILogger {
 public:
   void log(LogLevel, const std::string &) override {}
+};
+
+/// Default values for `ILogger` (a built-in `DependencyKey`).
+///
+/// - `live()`: writes to `std::cout`.
+/// - `test()`: records messages in a thread-safe buffer, so tests can assert
+///   on the exact output.
+template <> struct DependencyTraits<ILogger> {
+  static std::shared_ptr<ILogger> live() { return std::make_shared<ConsoleLogger>(); }
+
+  static std::shared_ptr<ILogger> test() { return std::make_shared<TestLogger>(); }
 };
 
 } // namespace cppdi

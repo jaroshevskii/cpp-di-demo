@@ -204,9 +204,12 @@ AppContext forkForAsync(std::uint64_t slot) const {
 
 ### Add a new service
 
-1. Define an interface + a production impl + a test impl.
-2. Add it to `AppContext::live()` / `test()`.
-3. Consume it exactly like `DiceRoller` does: `ctx.dependencies.get<T>()`.
+1. Define an interface + a production impl + (usually) a dedicated test impl.
+2. Give the interface **default values** so nothing has to be wired manually:
+   specialize `DependencyTraits<T>` (see §7). If arbitrary runtime configuration
+   is needed, keep the `AppContext::live() / test()` additions instead.
+3. Consume it like `DiceRoller` does: `ctx.dependencies.get<T>()` (explicit style)
+   or `Dependency<T>` (ergonomic style).
 
 ### Add an RNG-free dependency that has no per-slot variant
 
@@ -225,13 +228,94 @@ Implement `IRandomGenerator`. Wire it in via `makeRng` (for its own impl) and
 `constexpr` tag or a `type_index`-like enum. The container's contract does
 not change.
 
-## 7. Authoritative answers to "where does X live?"
+## 7. Swift-dependencies ergonomics
+
+The features above mirror the *explicit* style of `DependencyValues`: you build
+a context and pass it down. `swift-dependencies` also offers an *ergonomic*
+style — defaults declared once per dependency, an accessor you use anywhere, and
+lexical scoping — all of which is ported here.
+
+### `DependencyTraits<T>` — the `DependencyKey` protocol
+
+Give an interface its **default values** once, and zero wiring is needed
+anywhere else:
+
+```cpp
+template <> struct cppdi::DependencyTraits<cppdi::IRandomGenerator> {
+  static std::shared_ptr<cppdi::IRandomGenerator> live() {
+    return std::make_shared<cppdi::ThreadLocalRandomGenerator>();
+  }
+  static std::shared_ptr<cppdi::IRandomGenerator> test() {
+    // Like Swift's `.unimplemented`: forbid accidental live use in tests.
+    throw cppdi::DependencyNotFoundError{"provide a seeded generator in tests"};
+  }
+};
+```
+
+- `live()` is used in `DependencyContext::Live` containers (production).
+- `test()` is used in `DependencyContext::Test` containers. If you do not
+  define it, it falls back to `live()` — the same default as Swift's
+  `testValue == liveValue`.
+- A type with no specialization has no default, and `get<T>()` throws — so a
+  test can never silently run on live behavior.
+
+`Dependencies` resolves `get<T>()` in three steps (§2): explicit provider →
+lazy `DependencyTraits<T>` default, **cached on first access** (like
+`DependencyValues`) → throw.
+
+### `Dependency<T>` — the `@Dependency` property wrapper
+
+A default-constructible accessor that resolves through the *current* values:
+
+```cpp
+cppdi::Dependency<cppdi::IRandomGenerator> rng;   // nothing to inject
+int value = rng->nextInt(1, 6);                   // resolved now
+```
+
+It can also target a specific container (`Dependency<T>{deps}`) for the
+explicit style.
+
+### `withDependencies` — lexical scoping
+
+Restores the previous values even when `operation` throws, and returns its
+result:
+
+```cpp
+cppdi::withDependencies(
+    [](cppdi::Dependencies &deps) { deps.provide<cppdi::ILogger, cppdi::NullLogger>(); },
+    [] { appWork(); });
+```
+
+### The value stack (thread-local current values)
+
+Resolution order for `Dependency<T>`:
+
+1. a thread-local **overlay** — installed by `withDependencies` and
+   `bindDependencies` (RAII, automatically restored);
+2. the **process-wide defaults** — the base set by `prepareDependencies`
+   (startup) and inspectable/restorable via `defaultDependencies()`,
+   `setDefaultDependencies()`.
+
+`bindDependencies(ctx.dependencies)` installs a ready-made context for the
+duration of a scope — the springboard between the two styles. The C++ analogue
+of Swift's per-task values: overlays never leak across threads, so parallel
+code must pass a context or use `forkForAsync` explicitly.
+
+### Interplay with deterministic parallelism
+
+`withDependencies`/`bindDependencies` are **thread-local**. A worker thread
+spawned with `std::async` starts with the process defaults — it does **not**
+inherit the spawning thread's overlay. This is by design: cross-thread
+determinism is the job of `AppContext::forkForAsync(slot)`, which hands each
+task a private seeded engine on its own thread regardless of the value stack.
+
+## 8. Authoritative answers to "where does X live?"
 
 | Question                                   | Answer                                              |
 | ------------------------------------------ | ---------------------------------------------------- |
-| How is the random generator chosen?        | `AppContext::live()` / `test()` + `makeRng`          |
-| Why is a test deterministic?               | `AppContext::test(42)` registers a seeded generator  |
+| How is the random generator chosen?        | `DependencyTraits<IRandomGenerator>::live()/test()`, or `AppContext` |
+| Why is a test deterministic?               | `AppContext::test(42)` provides a seeded generator  |
 | Why is parallel work deterministic?        | `forkForAsync(slot)` → engine seeded `seed + slot`   |
 | Who owns the RNG mutex?                    | The generator impl (`DeterministicGenerator`)        |
 | Why is `THIS` never captured in async?     | Task captures state by value (dangling-free)         |
-| How do I override one dependency?          | `ctx.dependencies.provide<Iface, Impl>(args…)`       |
+| How do I override one dependency?          | `provide<Iface, Impl>(…)`, or `withDependencies` for a scope |

@@ -9,11 +9,18 @@ C++, inspired by
 [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture)’s
 `DependencyValues`.
 
-It gives you the same ergonomics Swift developers enjoy with `DependencyValues`:
+It gives you the same ergonomics Swift developers enjoy with `DependencyValues`
+and `swift-dependencies`:
 
+- **registration** — declare `live()` / `test()` defaults once per dependency
+  (`DependencyTraits<T>`, the `DependencyKey` pattern), then forget wiring;
+- **access** — read any dependency anywhere with a `Dependency<T>` accessor
+  (the `@Dependency` pattern), no plumbing through constructors;
+- **scoping** — override for a lexical scope with `withDependencies`, for the
+  whole process with `prepareDependencies`, or install a ready context with
+  `bindDependencies`;
 - **one-line production wiring** — `AppContext::live()`;
 - **one-line deterministic test wiring** — `AppContext::test(seed)`;
-- **override a single dependency** without touching anything else;
 - **deterministic parallelism** — every async task gets a private, seeded RNG,
   so results are reproducible no matter the thread schedule.
 
@@ -53,8 +60,14 @@ auto ctx = cppdi::AppContext::test(42); // seeded RNG, capturing logger
 
 ## Features
 
+- **`DependencyTraits<T>`** — per-dependency `live()` / `test()` defaults
+  (the `DependencyKey` pattern), lazily built and cached on first access.
+- **`Dependency<T>`** — accessor that resolves through the current values
+  (the `@Dependency` pattern), or pinned to a specific container.
+- **`withDependencies` / `prepareDependencies` / `bindDependencies`** — lexical
+  scoping, process-wide defaults, and ready-context installation.
 - **`Dependencies`** — type-safe, thread-safe, type-erased container
-  (`provide` / `get` / `tryGet` / `contains` / `clone` / `detach`).
+  (`provide` / `get` / `tryGet` / `contains` / `remove` / `clone` / `detach`).
 - **`AppContext`** — ready-made bindings: `live()` vs `test(seed)`.
 - **Deterministic async** — `AsyncDiceRoller` proves parallel work is fully
   reproducible via per-task seeded engines (`forkForAsync`).
@@ -135,23 +148,58 @@ app::AsyncDiceRoller async{testContext};
 async.rollParallel(100); // same result vector every run
 ```
 
-Full walkthrough: [docs/architecture.md](docs/architecture.md),
+### The `swift-dependencies` way — defaults, accessors, scopes
+
+```cpp
+#include <cppdi/Dependency.h>
+
+// 1. Register live + test defaults once per interface (the DependencyKey
+//    pattern). For the built-ins this is already done for you.
+template <> struct cppdi::DependencyTraits<cppdi::IRandomGenerator> {
+  static std::shared_ptr<cppdi::IRandomGenerator> live() {
+    return std::make_shared<cppdi::ThreadLocalRandomGenerator>();
+  }
+  static std::shared_ptr<cppdi::IRandomGenerator> test() {
+    throw cppdi::DependencyNotFoundError{"provide a seeded generator"};
+  }
+};
+
+// 2. Read it anywhere — no wiring (the @Dependency pattern)
+cppdi::Dependency<cppdi::IRandomGenerator> rng;
+int roll = rng->nextInt(1, 6);
+
+// 3. Override for a lexical scope (the withDependencies pattern)
+cppdi::withDependencies(
+    [](cppdi::Dependencies &d) { d.provide<cppdi::ILogger, cppdi::TestLogger>(); },
+    [] { /* every Dependency<...> here sees the override */ });
+
+// 4. Or install a ready context for a whole component graph
+auto ctx = cppdi::AppContext::test(42u);
+auto scope = cppdi::bindDependencies(ctx.dependencies);
+app::DiceRoller roller; // implicitly resolves ctx's seeded generator
+```
+
+Full guide: [docs/dependency-key.md](docs/dependency-key.md),
+architecture walkthrough: [docs/architecture.md](docs/architecture.md),
 testing guide: [docs/testing.md](docs/testing.md).
 
 ## Project layout
 
 ```
-include/cppdi/          The library (header-only)
-  Dependencies.h        Dependencies + AppContext + DependencyNotFoundError
-  Random.h              IRandomGenerator + thread-local / deterministic impls
-  Logger.h              ILogger + console / test / null impls
-examples/               Reference application that uses the library
-  DiceApp.h             DiceRoller, AsyncDiceRoller, RandomStringGenerator
-  DiceCli.cpp           CLI entry point (--seed / --rolls / --parallel)
-tests/                  Catch2 test suite (31 cases)
-docs/                   architecture.md, testing.md
-.github/workflows/      CI: Linux GCC/Clang, macOS, Windows, ASan+UBSan
-cmake/                  CompileSettings.cmake (warning policy)
+include/cppdi/              The library (header-only)
+  Dependencies.h            Dependencies + AppContext + DependencyNotFoundError
+  DependencyTraits.h        DependencyTraits<T> (DependencyKey) + DependencyContext
+  Dependency.h              Dependency<T> accessor + withDependencies +
+                            prepareDependencies + bindDependencies
+  Random.h                  IRandomGenerator + thread-local / deterministic impls
+  Logger.h                  ILogger + console / test / null impls
+examples/                   Reference application that uses the library
+  DiceApp.h                 DiceRoller, AsyncDiceRoller, RandomStringGenerator
+  DiceCli.cpp               CLI entry point (--seed / --rolls / --parallel)
+tests/                      Catch2 test suite (48 cases)
+docs/                       architecture.md, testing.md, dependency-key.md
+.github/workflows/          CI: Linux GCC/Clang, macOS, Windows, ASan+UBSan
+cmake/                      CompileSettings.cmake (warning policy)
 ```
 
 ## Thread-safety model
@@ -161,15 +209,19 @@ cmake/                  CompileSettings.cmake (warning policy)
 | Container lookup/registration | internal mutex, atomic swap of erased `shared_ptr`                  |
 | `ThreadLocalRandomGenerator` | per-thread `thread_local` engine — zero contention                   |
 | `DeterministicGenerator`     | mutex-guarded shared engine — safe across threads (tests)           |
+| Scoped overrides             | thread-local overlay stack (RAII); process defaults registry-locked |
 | Async tasks                  | task captures state **by value**, never `this`                      |
 | Parallel determinism         | `forkForAsync(slot)` → private engine seeded `baseSeed + slot`      |
 
 ## Testing
 
-31 test cases / ~72k assertions, all deterministic, all run in CI on three
+48 test cases / ~72k assertions, all deterministic, all run in CI on three
 compilers plus a Linux ASan+UBSan job:
 
 - deterministic reproduction (`same seed == same output`);
+- `DependencyTraits` default values, caching, and `remove()` reset;
+- `withDependencies` scoping, nesting, exception-safety, and thread isolation;
+- `prepareDependencies` + restore of the process-wide defaults;
 - range validity under 8-thread / 100-task stress;
 - container thread-safety and clone/detach semantics;
 - logging capture, null-logger, concurrency.
