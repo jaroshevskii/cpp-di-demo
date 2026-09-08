@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
     cppdi
-    VERSION 1.0.0
-    DESCRIPTION "A tiny, thread-safe, TCA-inspired dependency injection toolkit for modern C++"
+    VERSION 1.1.0
+    DESCRIPTION "Dependency injection for C++20 modeled on swift-dependencies: default live/test values, Dependency<T> accessors, withDependencies scoping, deterministic async testing"
     HOMEPAGE_URL "https://github.com/jaroshevskii/cpp-di-demo"
     LANGUAGES CXX
 )

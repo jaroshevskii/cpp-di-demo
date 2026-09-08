@@ -4,10 +4,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blueviolet.svg)]()
 
-A tiny, **header-only**, thread-safe dependency injection toolkit for modern
-C++, inspired by
-[The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture)’s
-`DependencyValues`.
+A tiny, **header-only**, dependency injection toolkit for modern C++,
+ergonomically modeled on
+[swift-dependencies](https://github.com/pointfreeco/swift-dependencies) and
+[The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture):
+declare `live()`/`test()` defaults once per dependency, read them anywhere with
+a `Dependency<T>` accessor, override lexically with `withDependencies` — and
+get one-line deterministic async testing for free.
 
 It gives you the same ergonomics Swift developers enjoy with `DependencyValues`
 and `swift-dependencies`:
