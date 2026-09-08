@@ -51,6 +51,7 @@ struct CountingToken final : IToken {
 
 } // namespace
 
+namespace cppdi {
 template <> struct DependencyTraits<IGreeter> {
   static std::shared_ptr<IGreeter> live() { return std::make_shared<LiveGreeter>(); }
   static std::shared_ptr<IGreeter> test() { return std::make_shared<TestGreeter>(); }
@@ -66,6 +67,7 @@ template <> struct DependencyTraits<IToken> {
     return std::make_shared<CountingToken>();
   }
 };
+} // namespace cppdi
 
 TEST_CASE("live context falls back to DependencyTraits::live() and caches it") {
   Dependencies deps;
