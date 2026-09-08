@@ -1,0 +1,21 @@
+CMakeLists.txt
+  s_974d6062f4cd11::t_f30b4fede576a6 5-6
+README.md
+  s_974d6062f4cd11::t_00c3007b710045 7-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c5c2f357f33628bd3afe1aa39f7d962c99fec9d6",
+  "prompts": {},
+  "sessions": {
+    "s_974d6062f4cd11": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7d8fa4c2ffePwkxNqjnhfIR4j",
+        "model": "big-pickle"
+      },
+      "human_author": "Sasha Jaroshevskii 🦄 <72662383+jaroshevskii@users.noreply.github.com>"
+    }
+  }
+}
