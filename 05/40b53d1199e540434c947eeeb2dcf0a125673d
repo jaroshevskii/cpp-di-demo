@@ -1,0 +1,19 @@
+tests/DependencyTests.cpp
+  s_974d6062f4cd11::t_aded18522ce0de 54,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0540b53d1199e540434c947eeeb2dcf0a125673d",
+  "prompts": {},
+  "sessions": {
+    "s_974d6062f4cd11": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7d8fa4c2ffePwkxNqjnhfIR4j",
+        "model": "big-pickle"
+      },
+      "human_author": "Sasha Jaroshevskii 🦄 <72662383+jaroshevskii@users.noreply.github.com>"
+    }
+  }
+}
