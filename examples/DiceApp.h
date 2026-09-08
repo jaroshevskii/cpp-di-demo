@@ -58,7 +58,7 @@ private:
 /// future completes without dangling.
 class AsyncDiceRoller {
 public:
-    explicit AsyncDiceRoller(AppContext context) : context{std::move(context)} {}
+    explicit AsyncDiceRoller(AppContext injectedContext) : context{std::move(injectedContext)} {}
 
     AsyncDiceRoller(const AsyncDiceRoller &) = delete;
     AsyncDiceRoller &operator=(const AsyncDiceRoller &) = delete;
