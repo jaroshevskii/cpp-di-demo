@@ -1,0 +1,12 @@
+---
+# Apple/LLVM-inspired formatting: based on the LLVM style with Swift
+# ergonomics (4-space indent, 100 columns, lowercase members, `.h` headers).
+BasedOnStyle: LLVM
+AccessModifierOffset: -4
+IndentWidth: 4
+ColumnLimit: 100
+PointerAlignment: Right
+DerivePointerAlignment: false
+SortIncludes: CaseSensitive
+Standard: c++20
+AllowShortFunctionsOnASingleLine: InlineOnly

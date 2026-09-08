@@ -1,0 +1,11 @@
+Checks: >
+  bugprone-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -readability-else-after-return,
+WarningsAsErrors: ''
+HeaderFilterRegex: '^include/cppdi/.*'
+FormatStyle: file

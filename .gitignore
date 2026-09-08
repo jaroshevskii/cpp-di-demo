@@ -1,0 +1,16 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS noise
+.DS_Store
+
+# CMake
+CMakeUserPresets.json
