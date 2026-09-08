@@ -64,8 +64,8 @@ auto ctx = cppdi::AppContext::test(42); // seeded RNG, capturing logger
   - `DeterministicGenerator` is mutex-guarded shared state.
 - **Header-only** — drop `include/cppdi/` into your project. Zero dependencies.
 - **Modern** — C++20, RAII, `std::atomic`, `std::shared_ptr`, CTAD.
-- **Style** — Apple/LLVM conventions: 4-space indent, PascalCase files,
-  Swift-style naming (`nextInt`, `rollAsync`, `forkForAsync`).
+- **Style** — Apple/LLVM conventions: 2-space indent (Swift-style), PascalCase
+  files, Swift naming (`nextInt`, `rollAsync`, `forkForAsync`).
 
 ## Requirements
 
